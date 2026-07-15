@@ -1,0 +1,10 @@
+# Foundry build artifacts and dependency checkout
+cache/
+out/
+lib/
+
+# JavaScript dependencies
+cards/node_modules/
+
+# macOS metadata
+.DS_Store
