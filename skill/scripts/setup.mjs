@@ -4,7 +4,7 @@
 //   node setup.mjs --arm <vowId>   -> install SessionStart hook + cron, first beat
 //   node setup.mjs --disarm        -> remove hook + cron (relapses first if active)
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { execSync, spawnSync } from "node:child_process";
@@ -25,6 +25,9 @@ const SNITCH = resolve(dirname(fileURLToPath(import.meta.url)), "snitch.mjs");
 const CLAUDE_SETTINGS = join(homedir(), ".claude", "settings.json");
 const HOOK_CMD = `node ${SNITCH} relapse`;
 const CRON_LINE = `13 9 * * * node ${SNITCH} heartbeat # buildnothing`;
+const LAUNCH_AGENTS = join(homedir(), "Library", "LaunchAgents");
+const LAUNCHD_LABEL = "com.buildnothing.snitch";
+const LAUNCHD_PLIST = join(LAUNCH_AGENTS, `${LAUNCHD_LABEL}.plist`);
 
 const arg = process.argv[2];
 
@@ -71,7 +74,13 @@ function installCron() {
   const current = spawnSync("crontab", ["-l"], { encoding: "utf8" }).stdout || "";
   if (!current.includes("# buildnothing")) {
     const next = current.trimEnd() + "\n" + CRON_LINE + "\n";
-    execSync("crontab -", { input: next });
+    try {
+      execSync("crontab -", { input: next, cwd: "/", env: { ...process.env, TMPDIR: "/tmp" } });
+    } catch {
+      installLaunchAgent();
+      console.log("[arm] crontab unavailable; launchd heartbeat installed (09:13 local)");
+      return;
+    }
   }
   console.log("[arm] daily heartbeat cron installed (09:13 local)");
 }
@@ -79,8 +88,52 @@ function installCron() {
 function removeCron() {
   const current = spawnSync("crontab", ["-l"], { encoding: "utf8" }).stdout || "";
   const next = current.split("\n").filter((l) => !l.includes("# buildnothing")).join("\n");
-  execSync("crontab -", { input: next + "\n" });
+  try {
+    execSync("crontab -", { input: next + "\n", cwd: "/", env: { ...process.env, TMPDIR: "/tmp" } });
+  } catch {
+    // macOS may deny crontab writes under restricted terminals; launchd cleanup below is enough.
+  }
+  removeLaunchAgent();
   console.log("[disarm] cron removed");
+}
+
+function installLaunchAgent() {
+  mkdirSync(LAUNCH_AGENTS, { recursive: true });
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${LAUNCHD_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${process.execPath}</string>
+    <string>${SNITCH}</string>
+    <string>heartbeat</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>13</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>${join(DIR, "heartbeat.log")}</string>
+  <key>StandardErrorPath</key>
+  <string>${join(DIR, "heartbeat.err")}</string>
+</dict>
+</plist>
+`;
+  writeFileSync(LAUNCHD_PLIST, plist);
+  spawnSync("launchctl", ["unload", LAUNCHD_PLIST], { stdio: "ignore" });
+  spawnSync("launchctl", ["load", LAUNCHD_PLIST], { stdio: "ignore" });
+}
+
+function removeLaunchAgent() {
+  if (!existsSync(LAUNCHD_PLIST)) return;
+  spawnSync("launchctl", ["unload", LAUNCHD_PLIST], { stdio: "ignore" });
+  rmSync(LAUNCHD_PLIST, { force: true });
 }
 
 async function main() {
@@ -133,10 +186,12 @@ async function main() {
     }
     console.log(`burner balance: ${formatEther(bal)} MON`);
     c.vowId = vowId;
-    c.armed = true;
+    c.armed = false;
     saveCfg(c);
     installHook();
     installCron();
+    c.armed = true;
+    saveCfg(c);
     // first beat, immediately
     execSync(`node ${SNITCH} heartbeat`, { stdio: "inherit" });
     console.log("");

@@ -2,6 +2,7 @@
 cache/
 out/
 lib/
+broadcast/
 
 # JavaScript dependencies
 cards/node_modules/
@@ -9,3 +10,7 @@ skill/node_modules/
 
 # macOS metadata
 .DS_Store
+
+# Local secrets
+.env
+.env.*
