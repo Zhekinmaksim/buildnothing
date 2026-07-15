@@ -13,7 +13,8 @@ import { createPublicClient, http, formatEther } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 // ---- config: fill after deploy -------------------------------------------
-const CONTRACT = process.env.BN_CONTRACT ?? "0x0000000000000000000000000000000000000000";
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+const CONTRACT = process.env.BN_CONTRACT ?? ZERO_ADDR;
 const RPC = process.env.BN_RPC ?? "https://rpc.monad.xyz";
 const CHAIN_ID = Number(process.env.BN_CHAIN_ID ?? 143);
 // ---------------------------------------------------------------------------
@@ -29,6 +30,8 @@ const arg = process.argv[2];
 
 function loadCfg() { return JSON.parse(readFileSync(CFG, "utf8")); }
 function saveCfg(c) { mkdirSync(DIR, { recursive: true }); writeFileSync(CFG, JSON.stringify(c, null, 2)); }
+function isAddress(v) { return /^0x[a-fA-F0-9]{40}$/.test(String(v)); }
+function usableContract(v) { return isAddress(v) && v.toLowerCase() !== ZERO_ADDR; }
 
 function readSettings() {
   try { return JSON.parse(readFileSync(CLAUDE_SETTINGS, "utf8")); } catch { return {}; }
@@ -86,8 +89,13 @@ async function main() {
     if (existsSync(CFG)) {
       const c = loadCfg();
       console.log(`burner already exists: ${privateKeyToAccount(c.pk).address}`);
+      if (!usableContract(c.contract) && !usableContract(CONTRACT)) {
+        console.log("contract is not set yet. After deploy, arm with:");
+        console.log("  BN_CONTRACT=<deployed-address> node scripts/setup.mjs --arm <vowId>");
+        return;
+      }
       console.log(`fund it with ~0.05 MON gas dust, then commit your vow and run:`);
-      console.log(`  node setup.mjs --arm <vowId>`);
+      console.log(`  BN_CONTRACT=${usableContract(CONTRACT) ? CONTRACT : c.contract} node scripts/setup.mjs --arm <vowId>`);
       return;
     }
     const pk = generatePrivateKey();
@@ -99,7 +107,7 @@ async function main() {
     console.log("next:");
     console.log(`  1. send ~0.05 MON to ${addr} (gas for beats and betrayal)`);
     console.log(`  2. from your MAIN wallet call commit(duration, ${addr}) with your stake`);
-    console.log(`  3. node setup.mjs --arm <vowId>`);
+    console.log(`  3. BN_CONTRACT=<deployed-address> node scripts/setup.mjs --arm <vowId>`);
     return;
   }
 
@@ -108,6 +116,15 @@ async function main() {
     if (!vowId) { console.error("usage: setup.mjs --arm <vowId>"); process.exit(1); }
     const c = loadCfg();
     const addr = privateKeyToAccount(c.pk).address;
+    const contract = usableContract(CONTRACT) ? CONTRACT : c.contract;
+    if (!usableContract(contract)) {
+      console.error("BN_CONTRACT is required and must be the deployed BuildNothing contract address.");
+      console.error("usage: BN_CONTRACT=<deployed-address> node scripts/setup.mjs --arm <vowId>");
+      process.exit(1);
+    }
+    c.contract = contract;
+    c.rpc = process.env.BN_RPC ?? c.rpc ?? RPC;
+    c.chainId = Number(process.env.BN_CHAIN_ID ?? c.chainId ?? CHAIN_ID);
     const pub = createPublicClient({ transport: http(c.rpc) });
     const bal = await pub.getBalance({ address: addr });
     if (bal === 0n) {

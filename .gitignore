@@ -5,6 +5,7 @@ lib/
 
 # JavaScript dependencies
 cards/node_modules/
+skill/node_modules/
 
 # macOS metadata
 .DS_Store
