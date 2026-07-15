@@ -14,3 +14,4 @@ skill/node_modules/
 # Local secrets
 .env
 .env.*
+.vercel
