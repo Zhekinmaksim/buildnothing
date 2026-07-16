@@ -47,6 +47,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         e.target.tagName, String(e.target.src || e.target.href || ''));
       return;
     }
+    // Wallet extensions can fight over window.ethereum and throw from their
+    // own chrome-extension:// scripts. That should not surface as a site error.
+    var source = String(e.filename || (e.error && e.error.stack) || '');
+    var msg = String(e.message || e.type || '');
+    if (/^(chrome|moz|safari)-extension:\/\//i.test(source) ||
+        /Cannot redefine property:\s*ethereum/i.test(msg)) {
+      console.warn('[bundle] ignored browser extension error:', msg, source);
+      return;
+    }
     var p = document.body || document.documentElement;
     var d = document.getElementById('__bundler_err') || p.appendChild(document.createElement('div'));
     d.id = '__bundler_err';
