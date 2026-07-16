@@ -64,6 +64,32 @@ economics of self-betrayal have never been this affordable.
 - `cards/` - share card generator (SVG -> PNG)
 - `web/` - vow page, cohort leaderboard, card sharing
 
+## Roadmap
+
+The current version is intentionally honest rather than frictionless: a vow
+only has teeth once the local snitch is armed, and that still requires a few
+manual steps. The next milestone is to keep the same threat model while making
+the setup feel closer to "stake MON and wait".
+
+1. **Local snitch companion.** Ship a tiny localhost helper that the user runs
+   once. It generates the burner locally, stores the private key in
+   `~/.buildnothing`, and exposes only a narrow API to the website:
+   `status`, `generate`, `arm`, `disarm`, and `heartbeat`.
+2. **Safe website pairing.** Add a `Connect local snitch` flow. The helper
+   prints a pairing code, the user enters it on the site, and the site receives
+   only the burner address and status - never the burner private key.
+3. **Auto-fill and auto-arm.** After pairing, the site fills the snitch address,
+   the user stakes from their normal wallet, and the helper arms the returned
+   vow id automatically.
+4. **Security guardrails.** The helper must listen only on `127.0.0.1`, accept
+   only the official origin, require the pairing token for side effects, and
+   refuse arbitrary transactions. It may sign only `heartbeat(vowId)` and
+   `relapse(vowId)` for the deployed BuildNothing contract after verifying
+   `vow.snitch == burnerAddress`.
+5. **Clear product split.** Keep the manual CLI as a transparent fallback.
+   The website should explain the core rule plainly: no snitch, no proof. The
+   main wallet stays in Rabby/Phantom; the snitch burner only holds gas dust.
+
 ## Deploy
 
 ```bash
