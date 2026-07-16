@@ -89,6 +89,14 @@ the setup feel closer to "stake MON and wait".
 5. **Clear product split.** Keep the manual CLI as a transparent fallback.
    The website should explain the core rule plainly: no snitch, no proof. The
    main wallet stays in Rabby/Phantom; the snitch burner only holds gas dust.
+6. **Non-crypto charity mode.** Add a walletless path for users who do not
+   hold MON. Instead of calling it a stake, frame it as a card-based charity
+   pledge: the user chooses a nonprofit, chooses an amount, and a relapse
+   triggers a donation workflow through Pledge. The UI must be explicit that
+   donations are processed by Pledge and disbursed to nonprofits through
+   Pledge's payout schedule, not instantly routed on-chain. Crypto users keep
+   the trustless MON stake mode; non-crypto users get a familiar card flow with
+   charitable consequences.
 
 ## Deploy
 
