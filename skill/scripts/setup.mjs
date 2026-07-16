@@ -19,6 +19,28 @@ const RPC = process.env.BN_RPC ?? "https://rpc.monad.xyz";
 const CHAIN_ID = Number(process.env.BN_CHAIN_ID ?? 143);
 // ---------------------------------------------------------------------------
 
+const ABI = [
+  {
+    name: "vows",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vowId", type: "uint256" }],
+    outputs: [
+      { name: "penitent", type: "address" },
+      { name: "snitch", type: "address" },
+      { name: "start", type: "uint64" },
+      { name: "end", type: "uint64" },
+      { name: "lastBeat", type: "uint64" },
+      { name: "maxGap", type: "uint64" },
+      { name: "stake", type: "uint128" },
+      { name: "epochId", type: "uint32" },
+      { name: "status", type: "uint8" },
+      { name: "principalOnly", type: "bool" },
+    ],
+  },
+];
+const STATUS = ["None", "Active", "Relapsed", "Survived", "Slashed"];
+
 const DIR = join(homedir(), ".buildnothing");
 const CFG = join(DIR, "burner.json");
 const SNITCH = resolve(dirname(fileURLToPath(import.meta.url)), "snitch.mjs");
@@ -182,6 +204,22 @@ async function main() {
     const bal = await pub.getBalance({ address: addr });
     if (bal === 0n) {
       console.error(`burner ${addr} has no gas. Fund it first.`);
+      process.exit(1);
+    }
+    const vow = await pub.readContract({
+      address: contract,
+      abi: ABI,
+      functionName: "vows",
+      args: [BigInt(vowId)],
+    });
+    const [, snitch, , , , , , , status] = vow;
+    if (snitch.toLowerCase() !== addr.toLowerCase()) {
+      console.error(`vow ${vowId} uses snitch ${snitch}, but this burner is ${addr}.`);
+      console.error("Do not arm this vow. Create/arm a vow whose SNITCH ADDRESS is the burner printed by setup.");
+      process.exit(1);
+    }
+    if (Number(status) !== 1) {
+      console.error(`vow ${vowId} is ${STATUS[Number(status)] ?? `status ${status}`}, not Active.`);
       process.exit(1);
     }
     console.log(`burner balance: ${formatEther(bal)} MON`);
