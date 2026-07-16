@@ -55,6 +55,14 @@ funding more. At Monad gas prices the entire surveillance apparatus runs
 on cents - a burner funded with 0.05 MON snitches for a month. The
 economics of self-betrayal have never been this affordable.
 
+## Live deployment
+
+- App: https://buildnothing.fun
+- Network: Monad Mainnet (`chainId` 143)
+- Contract: `0x380b02992E2E0Be93eA31841a0E911D85DE77842`
+- Source verification: full match on MonadVision/Sourcify
+  `https://sourcify-api-monad.blockvision.org/repository/contracts/full_match/143/0x380b02992E2E0Be93eA31841a0E911D85DE77842/metadata.json`
+
 ## Repo layout
 
 - `src/BuildNothing.sol` - the contract (11/11 tests passing)
