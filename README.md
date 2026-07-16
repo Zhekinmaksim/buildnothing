@@ -63,6 +63,69 @@ economics of self-betrayal have never been this affordable.
 - Source verification: full match on MonadVision/Sourcify
   `https://sourcify-api-monad.blockvision.org/repository/contracts/full_match/143/0x380b02992E2E0Be93eA31841a0E911D85DE77842/metadata.json`
 
+## How to use
+
+The web app handles the on-chain vow. The local snitch handles proof that the
+vow was not bypassed.
+
+1. **Generate a snitch burner.**
+
+   ```bash
+   node skill/scripts/setup.mjs
+   ```
+
+   This creates `~/.buildnothing/burner.json` and prints a burner address.
+   Fund that burner with a small amount of MON for gas, for example `0.05 MON`.
+   The burner is not your stake wallet; it only sends `heartbeat()` and
+   `relapse()` transactions.
+
+2. **Take the vow on the website.**
+
+   Open https://buildnothing.fun, choose duration and stake, paste the burner
+   address as the snitch address, then click `Connect wallet & commit`.
+   The stake is paid from your normal wallet.
+
+3. **Arm the snitch.**
+
+   After the transaction confirms, use the returned vow id:
+
+   ```bash
+   BN_CONTRACT=0x380b02992E2E0Be93eA31841a0E911D85DE77842 node skill/scripts/setup.mjs --arm <vowId>
+   ```
+
+   Arming installs a Claude Code `SessionStart` hook, installs a daily
+   heartbeat cron/launchd job, and sends the first heartbeat immediately.
+
+4. **Do not open Claude Code until the vow ends.**
+
+   Opening Claude Code sends `relapse(vowId)` from the burner. Killing the
+   heartbeat for more than 48 hours lets the contract slash the vow as
+   tampered.
+
+5. **Check or share a vow.**
+
+   Use the `Check a vow` form on the website with either the vow id or wallet
+   address. The page reads Monad Mainnet live state and can generate a share
+   card.
+
+To clean up after a demo:
+
+```bash
+node skill/scripts/setup.mjs --disarm
+```
+
+If a vow is still active, disarming intentionally reports a relapse first.
+
+## Judge walkthrough
+
+For a fast review, judges can:
+
+1. Open https://buildnothing.fun and inspect the live contract link in the
+   footer.
+2. Check vow `1` in the `Check a vow` form.
+3. Review the verified contract source using the `Live deployment` link above.
+4. Run `forge test` locally; the contract test suite should pass `11/11`.
+
 ## Repo layout
 
 - `src/BuildNothing.sol` - the contract (11/11 tests passing)
